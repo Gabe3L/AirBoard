@@ -83,10 +83,6 @@ def main() -> None:
     windows = Windows()
 
     screen_res = windows.get_screen_res()
-    camera_res = (int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)),
-                        int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)))
-    webcam_to_screen_ratio = windows.get_webcam_to_screen_ratio(
-        screen_res, camera_res)
     
     calib = Calibration()
     calib.load_homography()
@@ -101,7 +97,7 @@ def main() -> None:
         frame = cv2.flip(frame, 1)
         frame_for_inference = frame.copy()
 
-        gesture, landmarks = mediapipe_detector.detect(frame_for_inference)
+        gesture = mediapipe_detector.detect(frame_for_inference)
         mode_manager.process_mode(gesture, frame)
 
         boxes, confidences, class_ids = yolo_detector.detect(frame_for_inference)
@@ -111,10 +107,10 @@ def main() -> None:
         frame_for_display = frame.copy()
 
         if box is not None and label is not None:
-            x, y = yolo_detector.find_box_center(box, webcam_to_screen_ratio, screen_res)
+            x, y = mediapipe_detector.get_fingertip_coords(screen_res)
             perform_action(x, y, label, windows)
             frame_for_display = VideoDisplay.annotate_frame(frame, box, label)
-        frame_for_display = mediapipe_detector.draw(frame, landmarks)
+        frame_for_display = mediapipe_detector.draw(frame)
         
         cv2.imshow("AirBoard", frame_for_display)
 

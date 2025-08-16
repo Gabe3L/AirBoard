@@ -9,27 +9,39 @@ class GestureDetector:
         self.mp_hands = mp.solutions.hands # type: ignore
         self.hands = self.mp_hands.Hands(max_num_hands=1)
         self.mp_draw = mp.solutions.drawing_utils # type: ignore
+        self.landmarks = None
 
     def detect(self, frame) -> Tuple[Optional[Literal['1_finger', '2_fingers', '3_fingers']], Optional[Any]]:
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = self.hands.process(frame_rgb)
         gesture = None
-        hand = None
 
         if result.multi_hand_landmarks:
-            hand = result.multi_hand_landmarks[0]
-            gesture = self.recognize_gesture(hand)
+            self.landmarks = result.multi_hand_landmarks[0]
+            gesture = self.recognize_gesture(self.landmarks)
 
-        return gesture, hand
+        return gesture, self.landmarks
 
-    def draw(self, frame: np.ndarray, landmarks: Optional[Any]) -> np.ndarray:
-        if landmarks:
+    def draw(self, frame: np.ndarray) -> np.ndarray:
+        if self.landmarks:
             self.mp_draw.draw_landmarks(
                 frame,
-                landmarks,
+                self.landmarks,
                 self.mp_hands.HAND_CONNECTIONS
             )
         return frame
+    
+    def get_fingertip_coords(self, screen_res):
+        if not self.landmarks:
+            return None, None
+
+        fingertip = self.landmarks.landmark[8]  # index finger tip
+        x_norm, y_norm = fingertip.x, fingertip.y
+        
+        x_screen = int(x_norm * screen_res[0])
+        y_screen = int(y_norm * screen_res[1])
+        
+        return x_screen, y_screen
 
     def recognize_gesture(self, hand_landmarks):
         finger_count = 0
