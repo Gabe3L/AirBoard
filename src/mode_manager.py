@@ -28,7 +28,6 @@ class ModeManager(QObject):
 
     def process_mode(self, gesture, frame):
         if gesture != self.previous_gesture:
-            print(gesture)
             self.previous_gesture = gesture        
 
         if gesture == "1_finger_up":

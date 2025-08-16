@@ -11,7 +11,7 @@ class GestureDetector:
         self.mp_draw = mp.solutions.drawing_utils # type: ignore
         self.landmarks = None
 
-    def detect(self, frame) -> Tuple[Optional[Literal['1_finger', '2_fingers', '3_fingers']], Optional[Any]]:
+    def detect(self, frame) -> Optional[Literal['1_finger', '2_fingers', '3_fingers']]:
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = self.hands.process(frame_rgb)
         gesture = None
@@ -20,7 +20,7 @@ class GestureDetector:
             self.landmarks = result.multi_hand_landmarks[0]
             gesture = self.recognize_gesture(self.landmarks)
 
-        return gesture, self.landmarks
+        return gesture
 
     def draw(self, frame: np.ndarray) -> np.ndarray:
         if self.landmarks:
@@ -31,11 +31,35 @@ class GestureDetector:
             )
         return frame
     
-    def get_fingertip_coords(self, screen_res):
+    def get_index_base_coords(self, screen_res):
+        if not self.landmarks:
+            return None, None
+
+        fingertip = self.landmarks.landmark[5]  # index finger base
+        x_norm, y_norm = fingertip.x, fingertip.y
+        
+        x_screen = int(x_norm * screen_res[0])
+        y_screen = int(y_norm * screen_res[1])
+        
+        return x_screen, y_screen
+    
+    def get_index_fingertip_coords(self, screen_res):
         if not self.landmarks:
             return None, None
 
         fingertip = self.landmarks.landmark[8]  # index finger tip
+        x_norm, y_norm = fingertip.x, fingertip.y
+        
+        x_screen = int(x_norm * screen_res[0])
+        y_screen = int(y_norm * screen_res[1])
+        
+        return x_screen, y_screen
+    
+    def get_thumb_coords(self, screen_res):
+        if not self.landmarks:
+            return None, None
+
+        fingertip = self.landmarks.landmark[4]  # thumb tip
         x_norm, y_norm = fingertip.x, fingertip.y
         
         x_screen = int(x_norm * screen_res[0])

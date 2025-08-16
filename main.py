@@ -1,14 +1,11 @@
 import time
-from typing import List
 
 import cv2
 
-from src.windows import Windows
+from src.os import OS
 from src.gesture_detection import GestureDetector
 from src.mode_manager import ModeManager
-from src.calibration import Calibration
 from src.detection.yolo import YOLODetector
-from src.display import VideoDisplay
 
 ###############################################################
 
@@ -20,6 +17,16 @@ LABELS = {
     4: 'thumbs_down',
     5: 'thumbs_up',
     6: 'two_fingers_up',
+}
+
+LABEL_COLOURS = {
+    0: (0, 0, 255),
+    1: (208, 224, 64),
+    2: (0, 255, 255),
+    3: (203, 192, 255),
+    4: (255, 0, 255),
+    5: (0, 225, 0),
+    6: (0, 165, 225)
 }
 
 ###############################################################
@@ -37,42 +44,42 @@ def load_webcam() -> cv2.VideoCapture:
         raise RuntimeError("Webcam initialization failed.")
     return cap
 
-def perform_action(x, y, class_id: int, windows: Windows) -> None:
+def perform_action(x, y, class_id: int, os: OS) -> None:
     label: str = LABELS[class_id]
 
     match label:
         case 'hand_open':
-            windows.left_mouse_up()
-            windows.move_mouse(x, y)
+            os.left_mouse_up()
+            os.move_mouse(x, y)
             return
 
         case 'hand_closed':
-            windows.left_mouse_up()
+            os.left_mouse_up()
             return
 
         case 'hand_pinching':
-            windows.clicking = True
-            windows.move_mouse(x, y)
-            windows.left_mouse_down()
+            os.clicking = True
+            os.move_mouse(x, y)
+            os.left_mouse_down()
             return
 
         case 'two_fingers_up':
-            windows.move_mouse(x, y)
-            windows.right_mouse_click()
+            os.move_mouse(x, y)
+            os.right_mouse_click()
             return
 
         case 'thumbs_up':
-            windows.left_mouse_up()
-            windows.mouse_scroll('up')
+            os.left_mouse_up()
+            os.mouse_scroll('up')
             return
 
         case 'thumbs_down':
-            windows.left_mouse_up()
-            windows.mouse_scroll('down')
+            os.left_mouse_up()
+            os.mouse_scroll('down')
             return
         
         case 'three_fingers_down':
-            windows.open_start_menu()
+            os.open_start_menu()
             return
 
 def main() -> None:
@@ -80,14 +87,9 @@ def main() -> None:
     mediapipe_detector = GestureDetector()
     yolo_detector = YOLODetector()
     mode_manager = ModeManager()
-    windows = Windows()
+    os = OS()
 
-    screen_res = windows.get_screen_res()
-    
-    calib = Calibration()
-    calib.load_homography()
-
-    print("AirBoard running. Press 'q' to quit.")
+    screen_res = os.get_screen_res()
     
     while True:
         ret, frame = cap.read()
@@ -106,10 +108,13 @@ def main() -> None:
         
         frame_for_display = frame.copy()
 
+        x, y = mediapipe_detector.get_index_base_coords(screen_res)
+
         if box is not None and label is not None:
-            x, y = mediapipe_detector.get_fingertip_coords(screen_res)
-            perform_action(x, y, label, windows)
-            frame_for_display = VideoDisplay.annotate_frame(frame, box, label)
+            perform_action(x, y, label, os)
+            color = LABEL_COLOURS.get(label, (255, 255, 255))
+            frame_for_display = cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), color, 2)
+        
         frame_for_display = mediapipe_detector.draw(frame)
         
         cv2.imshow("AirBoard", frame_for_display)
