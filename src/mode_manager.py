@@ -26,7 +26,7 @@ class ModeManager(QObject):
         self.current_mode = mode_name
         self.mode_changed.emit(mode_name)
 
-    def process_gesture(self, gesture, frame):
+    def process_mode(self, gesture, frame):
         if gesture != self.previous_gesture:
             print(gesture)
             self.previous_gesture = gesture        

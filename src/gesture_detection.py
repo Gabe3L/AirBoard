@@ -1,3 +1,5 @@
+from typing import Tuple, Literal, Optional, Any
+
 import mediapipe as mp
 import cv2
 import numpy as np
@@ -8,17 +10,26 @@ class GestureDetector:
         self.hands = self.mp_hands.Hands(max_num_hands=1)
         self.mp_draw = mp.solutions.drawing_utils # type: ignore
 
-    def detect(self, frame):
+    def detect(self, frame) -> Tuple[Optional[Literal['1_finger', '2_fingers', '3_fingers']], Optional[Any]]:
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = self.hands.process(frame_rgb)
         gesture = None
+        hand = None
 
         if result.multi_hand_landmarks:
             hand = result.multi_hand_landmarks[0]
-            self.mp_draw.draw_landmarks(frame, hand, self.mp_hands.HAND_CONNECTIONS)
             gesture = self.recognize_gesture(hand)
 
-        return gesture
+        return gesture, hand
+
+    def draw(self, frame: np.ndarray, landmarks: Optional[Any]) -> np.ndarray:
+        if landmarks:
+            self.mp_draw.draw_landmarks(
+                frame,
+                landmarks,
+                self.mp_hands.HAND_CONNECTIONS
+            )
+        return frame
 
     def recognize_gesture(self, hand_landmarks):
         finger_count = 0

@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 import torch
 import numpy as np
@@ -7,6 +7,16 @@ from ultralytics import YOLO
 ###############################################################
 
 CONFIDENCE_THRESHOLD: float = 0.6
+
+LABELS = {
+    0: 'hand_closed',
+    1: 'hand_open',
+    2: 'hand_pinching',
+    3: 'three_fingers_down',
+    4: 'thumbs_down',
+    5: 'thumbs_up',
+    6: 'two_fingers_up',
+}
 
 class YOLODetector:
     def __init__(self) -> None:
@@ -35,3 +45,25 @@ class YOLODetector:
                 class_ids.append(int(box.cls[0]))
 
         return np.array(boxes), np.array(confidences), np.array(class_ids)
+
+    def most_confident_box(self, boxes: List[List[int]], confidences: List[float], class_ids: List[int]) -> Optional[Tuple[List[int], int]]:
+        if not confidences:
+            return None
+
+        max_index = np.argmax(confidences)
+        box = boxes[max_index]
+        label = class_ids[max_index]
+
+        return box, label
+
+    def find_box_center(self, box: List[int], webcam_to_screen_ratio, screen_res) -> Tuple[int, int]:
+        x0, y0, x1, y1 = box
+        x = (x0 + x1) // 2
+        y = (y0 + y1) // 2
+
+        x = max(
+            0, min(int(x * webcam_to_screen_ratio[0]), screen_res[0] - 1))
+        y = max(
+            0, min(int(y * webcam_to_screen_ratio[1]), screen_res[1] - 1))
+
+        return x, y
