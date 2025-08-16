@@ -11,7 +11,7 @@ from src.detection.yolo import YOLODetector
 ###############################################################
 
 LABELS = {
-    0: 'hand_clouseed',
+    0: 'hand_closed',
     1: 'hand_open',
     2: 'hand_pinching',
     3: 'three_fingers_down',
