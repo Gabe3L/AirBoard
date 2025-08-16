@@ -19,6 +19,7 @@ LABELS = {
     6: 'two_fingers_up',
 }
 
+
 class YOLODetector:
     def __init__(self) -> None:
         self._suppress_output()
@@ -26,8 +27,8 @@ class YOLODetector:
         self._restore_output()
         self.device: torch.device = torch.device(
             'cuda' if torch.cuda.is_available() else 'cpu')
-        self.model: YOLO = YOLO("train\\weights\\best.engine" if torch.cuda.is_available(
-        ) else "train\\weights\\best.onnx", task='detect')
+        self.model: YOLO = YOLO("train\\weights\\windows_best.engine" if torch.cuda.is_available(
+        ) else "train\\weights\\windows_best.onnx", task='detect')
 
     def _suppress_output(self):
         self._stdout = sys.stdout

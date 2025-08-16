@@ -3,7 +3,6 @@ from threading import Timer, Lock
 from functools import wraps
 
 from src.gui.hud_runner import HUDThread
-from .actions import presenting, drawing, navigation
 from PyQt5.QtCore import QObject, pyqtSignal
 
 def cooldown(cooldown_seconds: float, one_run: bool = True):
