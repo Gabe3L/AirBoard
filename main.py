@@ -2,6 +2,7 @@ import time
 
 import cv2
 
+from src.actions.drawing import OverlayThread
 from src.mouse import Mouse
 from src.gesture_detection import GestureDetector
 from src.mode_manager import ModeManager
@@ -10,7 +11,7 @@ from src.detection.yolo import YOLODetector
 ###############################################################
 
 LABELS = {
-    0: 'hand_clmouseed',
+    0: 'hand_clouseed',
     1: 'hand_open',
     2: 'hand_pinching',
     3: 'three_fingers_down',
@@ -44,10 +45,9 @@ def load_webcam() -> cv2.VideoCapture:
         raise RuntimeError("Webcam initialization failed.")
     return cap
 
-def perform_action(cursor, class_id: int, mode_manager: ModeManager, mouse: Mouse) -> None:
+def perform_action(cursor, class_id: int, mode_manager: ModeManager, overlay_thread: OverlayThread, mouse: Mouse) -> None:
     label: str = LABELS[class_id]
 
-    
     match label:
         case 'three_fingers_down':
             if mode_manager.active:
@@ -77,6 +77,7 @@ def perform_action(cursor, class_id: int, mode_manager: ModeManager, mouse: Mous
         case 'hand_closed':
             if mode_manager.active:
                 mouse.left_mouse_up()
+                # overlay_thread.overlay.clear()
             return
 
         case 'hand_pinching':
@@ -95,6 +96,12 @@ def main() -> None:
     yolo_detector = YOLODetector()
     mode_manager = ModeManager()
     mouse = Mouse()
+
+    overlay_thread = OverlayThread()
+    overlay_thread.start()
+        
+    while overlay_thread.overlay is None:
+        time.sleep(0.1)
 
     screen_res = mouse.get_screen_res()
     
@@ -119,10 +126,14 @@ def main() -> None:
         cursor = mediapipe_detector.get_index_base_coords(screen_res)
 
         if box is not None and label is not None:
-            perform_action(cursor, label, mode_manager, mouse)
+            perform_action(cursor, label, mode_manager, overlay_thread, mouse)
             color = LABEL_COLOURS.get(label, (255, 255, 255))
             frame_for_display = cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), color, 2)
-        
+
+        if mode_manager.current_mode == "Drawing":
+            if mediapipe_detector.is_pinching:
+                overlay_thread.overlay.draw_point(mediapipe_detector.get_pinching_coords)
+
         frame_for_display = mediapipe_detector.draw(frame)
         
         cv2.imshow("AirBoard", frame_for_display)

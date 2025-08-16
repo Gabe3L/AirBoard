@@ -13,6 +13,7 @@ class HUD(QWidget):
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool) # type: ignore
         self.setAttribute(Qt.WA_TranslucentBackground) # type: ignore
+        self.setAttribute(Qt.WA_TransparentForMouseEvents)  # type: ignore
         self.resize(250, 80)
 
         screen = QApplication.primaryScreen()

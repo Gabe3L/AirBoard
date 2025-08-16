@@ -80,13 +80,6 @@ class ModeManager(QObject):
         if fingers_raised == 1:
             self.set_mode(0) # Default
         elif fingers_raised == 2:
-            self.set_mode(1) # Present
+            self.set_mode(1) # Presentation
         elif fingers_raised == 3:
-            self.set_mode(2) # Draw
-
-        if self.current_mode == "Present":
-            presenting.handle_gesture(fingers_raised)
-        elif self.current_mode == "Draw":
-            drawing.handle_gesture(fingers_raised, frame)
-        elif self.current_mode == "Default":
-            navigation.handle_gesture(fingers_raised)
+            self.set_mode(2) # Drawing

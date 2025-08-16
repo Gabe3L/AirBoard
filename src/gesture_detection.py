@@ -1,4 +1,5 @@
-from typing import Tuple, Literal, Optional, Any
+import math
+from typing import Optional
 
 import mediapipe as mp
 import cv2
@@ -66,6 +67,19 @@ class GestureDetector:
         y_screen = int(y_norm * screen_res[1])
         
         return x_screen, y_screen
+
+    def is_pinching(self):
+        if not self.landmarks:
+            return False
+        index_tip = self.landmarks.landmark[8]
+        thumb_tip = self.landmarks.landmark[4]
+        dx = index_tip.x - thumb_tip.x
+        dy = index_tip.y - thumb_tip.y
+        distance = math.sqrt(dx**2 + dy**2)
+        return distance < 0.04
+
+    def get_pinching_coords(self, screen_res):
+        return self.get_index_fingertip_coords(screen_res)
 
     def recognize_gesture(self, hand_landmarks) -> Optional[int]:
         finger_count = 0
