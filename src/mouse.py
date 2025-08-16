@@ -1,5 +1,4 @@
 import time
-import math
 from threading import Timer, Lock
 from functools import wraps
 from typing import Tuple
@@ -42,7 +41,7 @@ def cooldown(cooldown_seconds: float, one_run: bool = True):
         return wrapper
     return decorator
 
-class OS:
+class Mouse:
     def __init__(self) -> None:
         self.clicking = False
         self.mouse = MouseController()
@@ -66,8 +65,8 @@ class OS:
     def get_webcam_to_screen_ratio(self, screen_res: Tuple[int, int], camera_res: Tuple[int, int]) -> Tuple[float, float]:
         return (screen_res[0] / screen_res[1], camera_res[0] / camera_res[1])
 
-    def move_mouse(self, end_x: int, end_y: int) -> None:
-        self.mouse.position = (end_x, end_y)
+    def move_mouse(self, cursor: Tuple[int, int]) -> None:
+        self.mouse.position = (cursor)
 
     def mouse_scroll(self, direction: str) -> None:
         if direction == 'up':

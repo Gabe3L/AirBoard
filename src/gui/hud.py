@@ -24,7 +24,6 @@ class HUD(QWidget):
 
         self.show()
 
-
     @pyqtSlot(str)
     def set_mode(self, mode_name):
         self.mode = mode_name
@@ -34,7 +33,6 @@ class HUD(QWidget):
     def set_active(self, active):
         self.active = active
         self.update()
-
 
     def paintEvent(self, a0: QPaintEvent | None) -> None:
         painter = QPainter(self)

@@ -1,8 +1,9 @@
+import os
+import sys
 from typing import Tuple, List, Optional
 
 import torch
 import numpy as np
-from ultralytics import YOLO
 
 ###############################################################
 
@@ -20,14 +21,31 @@ LABELS = {
 
 class YOLODetector:
     def __init__(self) -> None:
+        self._suppress_output()
+        from ultralytics import YOLO
+        self._restore_output()
         self.device: torch.device = torch.device(
             'cuda' if torch.cuda.is_available() else 'cpu')
         self.model: YOLO = YOLO("train\\weights\\best.engine" if torch.cuda.is_available(
         ) else "train\\weights\\best.onnx", task='detect')
 
+    def _suppress_output(self):
+        self._stdout = sys.stdout
+        self._stderr = sys.stderr
+        sys.stdout = open(os.devnull, 'w')
+        sys.stderr = open(os.devnull, 'w')
+
+    def _restore_output(self):
+        sys.stdout.close()
+        sys.stderr.close()
+        sys.stdout = self._stdout
+        sys.stderr = self._stderr
+
     def detect(self, frame: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         with torch.no_grad():
+            self._suppress_output()
             results = self.model.predict(frame)[0]
+            self._restore_output()
         return self.extract_detections(results)
 
     def extract_detections(self, results) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:

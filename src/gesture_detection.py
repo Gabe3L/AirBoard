@@ -11,7 +11,7 @@ class GestureDetector:
         self.mp_draw = mp.solutions.drawing_utils # type: ignore
         self.landmarks = None
 
-    def detect(self, frame) -> Optional[Literal['1_finger', '2_fingers', '3_fingers']]:
+    def detect(self, frame) -> Optional[int]:
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = self.hands.process(frame_rgb)
         gesture = None
@@ -67,7 +67,7 @@ class GestureDetector:
         
         return x_screen, y_screen
 
-    def recognize_gesture(self, hand_landmarks):
+    def recognize_gesture(self, hand_landmarks) -> Optional[int]:
         finger_count = 0
         tips_ids = [4, 8, 12, 16, 20]
         landmarks = hand_landmarks.landmark
@@ -79,11 +79,7 @@ class GestureDetector:
         if landmarks[tips_ids[3]].y < landmarks[tips_ids[3]-2].y:
             finger_count += 1
 
-        if finger_count == 1:
-            return "1_finger"
-        elif finger_count == 2:
-            return "2_fingers"
-        elif finger_count == 3:
-            return "3_fingers"
-        else:
+        if finger_count == 0:
             return None
+        else:
+            return finger_count

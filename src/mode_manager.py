@@ -1,6 +1,46 @@
+import time
+from threading import Timer, Lock
+from functools import wraps
+
 from src.gui.hud_runner import HUDThread
 from .actions import presenting, drawing, navigation
 from PyQt5.QtCore import QObject, pyqtSignal
+
+def cooldown(cooldown_seconds: float, one_run: bool = True):
+    def decorator(func):
+        lock = Lock()
+        cooldown_active = False
+        cooldown_timer = None
+
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            nonlocal cooldown_active, cooldown_timer
+
+            with lock:
+                if cooldown_active:
+                    return None
+                
+                result = func(self, *args, **kwargs)
+
+                def reset_cooldown():
+                    nonlocal cooldown_active
+                    with lock:
+                        cooldown_active = False
+                
+                if one_run:
+                    cooldown_active = True
+                    cooldown_timer = Timer(cooldown_seconds, reset_cooldown)
+                    cooldown_timer.start()
+                else:
+                    if cooldown_timer is not None:
+                        cooldown_timer.cancel()
+                    cooldown_active = True
+                    cooldown_timer = Timer(cooldown_seconds, reset_cooldown)
+                    cooldown_timer.start()
+
+                return result
+        return wrapper
+    return decorator
 
 class ModeManager(QObject):
     mode_changed = pyqtSignal(str)
@@ -8,42 +48,45 @@ class ModeManager(QObject):
 
     def __init__(self):
         super().__init__()
-        self.current_mode = "Default"
+        self.current_mode = 0
         self.active = False
-        self.previous_gesture: bool = False
+        self.previous_fingers_raised: bool = False
+        self._toggle_pressed = False
+
         self.hud_thread = HUDThread()
         self.hud_thread.start()
 
-    def activate_mode(self):
-        self.active = True
-        self.active_changed.emit(True)
+        while self.hud_thread.hud is None:
+            time.sleep(0.1)
+            
+        self.mode_changed.connect(self.hud_thread.hud.set_mode)
+        self.active_changed.connect(self.hud_thread.hud.set_active)
 
-    def deactivate_mode(self):
-        self.active = False
-        self.active_changed.emit(False)
+    @cooldown(1.5, True)
+    def activate_mode(self, active: bool):
+        self.active = active
+        self.active_changed.emit(active)
 
-    def set_mode(self, mode_name):
-        self.current_mode = mode_name
-        self.mode_changed.emit(mode_name)
+    @cooldown(0.5, True)
+    def set_mode(self, mode: int):
+        self.current_mode = mode
+        mode_str = {0: "Default", 1: "Presentation", 2: "Drawing"}.get(mode, "Default")
+        self.mode_changed.emit(mode_str)
 
-    def process_mode(self, gesture, frame):
-        if gesture != self.previous_gesture:
-            self.previous_gesture = gesture        
+    def process_mode(self, fingers_raised, frame):
+        if fingers_raised != self.previous_fingers_raised:
+            self.previous_fingers_raised = fingers_raised        
 
-        if gesture == "1_finger_up":
-            self.set_mode("Present")
-        elif gesture == "2_fingers_up":
-            self.set_mode("Draw")
-        elif gesture == "3_fingers_up":
-            self.set_mode("Default")
-        elif gesture == "thumbs_up":
-            self.activate_mode()
-        elif gesture == "thumbs_down":
-            self.deactivate_mode()
+        if fingers_raised == 1:
+            self.set_mode(0) # Default
+        elif fingers_raised == 2:
+            self.set_mode(1) # Present
+        elif fingers_raised == 3:
+            self.set_mode(2) # Draw
 
         if self.current_mode == "Present":
-            presenting.handle_gesture(gesture)
+            presenting.handle_gesture(fingers_raised)
         elif self.current_mode == "Draw":
-            drawing.handle_gesture(gesture, frame)
+            drawing.handle_gesture(fingers_raised, frame)
         elif self.current_mode == "Default":
-            navigation.handle_gesture(gesture)
+            navigation.handle_gesture(fingers_raised)

@@ -2,7 +2,7 @@ import time
 
 import cv2
 
-from src.os import OS
+from src.mouse import Mouse
 from src.gesture_detection import GestureDetector
 from src.mode_manager import ModeManager
 from src.detection.yolo import YOLODetector
@@ -10,7 +10,7 @@ from src.detection.yolo import YOLODetector
 ###############################################################
 
 LABELS = {
-    0: 'hand_closed',
+    0: 'hand_clmouseed',
     1: 'hand_open',
     2: 'hand_pinching',
     3: 'three_fingers_down',
@@ -44,42 +44,49 @@ def load_webcam() -> cv2.VideoCapture:
         raise RuntimeError("Webcam initialization failed.")
     return cap
 
-def perform_action(x, y, class_id: int, os: OS) -> None:
+def perform_action(cursor, class_id: int, mode_manager: ModeManager, mouse: Mouse) -> None:
     label: str = LABELS[class_id]
 
+    
     match label:
-        case 'hand_open':
-            os.left_mouse_up()
-            os.move_mouse(x, y)
+        case 'three_fingers_down':
+            if mode_manager.active:
+                mode_manager.activate_mode(False)
+            else:
+                mode_manager.activate_mode(True)
             return
-
-        case 'hand_closed':
-            os.left_mouse_up()
-            return
-
-        case 'hand_pinching':
-            os.clicking = True
-            os.move_mouse(x, y)
-            os.left_mouse_down()
-            return
-
-        case 'two_fingers_up':
-            os.move_mouse(x, y)
-            os.right_mouse_click()
-            return
-
+        
         case 'thumbs_up':
-            os.left_mouse_up()
-            os.mouse_scroll('up')
+            if mode_manager.active:
+                mouse.left_mouse_up()
+                # mouse.mouse_scroll('up')
             return
 
         case 'thumbs_down':
-            os.left_mouse_up()
-            os.mouse_scroll('down')
+            if mode_manager.active:
+                mouse.left_mouse_up()
+                # mouse.mouse_scroll('down')
             return
-        
-        case 'three_fingers_down':
-            os.open_start_menu()
+
+        case 'hand_open':
+            if mode_manager.active:
+                mouse.left_mouse_up()
+                mouse.move_mouse(cursor)
+            return
+
+        case 'hand_closed':
+            if mode_manager.active:
+                mouse.left_mouse_up()
+            return
+
+        case 'hand_pinching':
+            if mode_manager.active:
+                mouse.clicking = True
+                mouse.move_mouse(cursor)
+                mouse.left_mouse_down()
+            return
+
+        case 'two_fingers_up':
             return
 
 def main() -> None:
@@ -87,9 +94,9 @@ def main() -> None:
     mediapipe_detector = GestureDetector()
     yolo_detector = YOLODetector()
     mode_manager = ModeManager()
-    os = OS()
+    mouse = Mouse()
 
-    screen_res = os.get_screen_res()
+    screen_res = mouse.get_screen_res()
     
     while True:
         ret, frame = cap.read()
@@ -99,8 +106,9 @@ def main() -> None:
         frame = cv2.flip(frame, 1)
         frame_for_inference = frame.copy()
 
-        gesture = mediapipe_detector.detect(frame_for_inference)
-        mode_manager.process_mode(gesture, frame)
+        fingers_raised = mediapipe_detector.detect(frame_for_inference)
+        if fingers_raised:
+            mode_manager.process_mode(fingers_raised, frame)
 
         boxes, confidences, class_ids = yolo_detector.detect(frame_for_inference)
         detection = yolo_detector.most_confident_box(boxes.tolist(), confidences.tolist(), class_ids.tolist())
@@ -108,10 +116,10 @@ def main() -> None:
         
         frame_for_display = frame.copy()
 
-        x, y = mediapipe_detector.get_index_base_coords(screen_res)
+        cursor = mediapipe_detector.get_index_base_coords(screen_res)
 
         if box is not None and label is not None:
-            perform_action(x, y, label, os)
+            perform_action(cursor, label, mode_manager, mouse)
             color = LABEL_COLOURS.get(label, (255, 255, 255))
             frame_for_display = cv2.rectangle(frame, (box[0], box[1]), (box[2], box[3]), color, 2)
         
